@@ -1,0 +1,6 @@
+name = Service Links Analytics
+description = Analytics
+core = 7.x
+package = Service Links
+dependencies[] = service_links
+dependencies[] = data
