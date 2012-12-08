@@ -40,7 +40,11 @@ function service_links_analytics_data($entity_type, $entity, $service_id, $metri
             break;
 
           case 'twitter':
-            $row->value = $data['count'];
+          case 'linkedin':
+          case 'pinterest':
+            if (isset($data['count'])) {
+              $row->value = $data['count'];
+            }
             break;
 
           case 'reddit':
@@ -48,10 +52,6 @@ function service_links_analytics_data($entity_type, $entity, $service_id, $metri
             foreach ($data['data']['children'] as $child) {
               $row->value += $child['data']['score'];
             }
-            break;
-
-          case 'linkedin':
-            $row->value = $data['count'];
             break;
 
           case 'delicious':
@@ -63,12 +63,6 @@ function service_links_analytics_data($entity_type, $entity, $service_id, $metri
           case 'stumbleupon':
             if ($data['result']['in_index']) {
               $row->value = $data['result']['views'];
-            }
-            break;
-
-          case 'pinterest':
-            if (isset($data['count'])) {
-              $row->value = $data['count'];
             }
             break;
         }
