@@ -61,7 +61,9 @@ function service_links_analytics_data($entity_type, $entity) {
             break;
 
           case 'pinterest':
-            $row->pinterest_count = $data['count'];
+            if (isset($data['count'])) {
+              $row->pinterest_count = $data['count'];
+            }
             break;
         }
       }
