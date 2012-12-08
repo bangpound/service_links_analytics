@@ -33,8 +33,8 @@ class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
     // until an item is successfully claimed or we are reasonably sure there
     // are no unclaimed items left.
     while (TRUE) {
-      $item = new stdClass();
-      $item->data = db_query_range('SELECT entity_type, entity_id, service, metric FROM {service_links_analytics} WHERE expire = 0 AND (updated = 0 OR updated < :threshold) ORDER BY updated ASC', 0, 1, array(':threshold' => time() - $this->expire))->fetchObject();
+      $item = db_query_range('SELECT entity_type, entity_id, service, metric FROM {service_links_analytics} WHERE expire = 0 AND (updated = 0 OR updated < :threshold) ORDER BY updated ASC', 0, 1, array(':threshold' => time() - $this->expire))->fetchObject();
+      $item->data = clone $item;
       if ($item->data) {
         // Try to update the item. Only one thread can succeed in UPDATEing the
         // same row. We cannot rely on REQUEST_TIME because items might be
