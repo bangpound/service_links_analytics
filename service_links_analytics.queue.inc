@@ -1,7 +1,11 @@
 <?php
 
 /**
- * Default queue implementation.
+ * Service Links Analytics Queue
+ *
+ * Class uses data table as queue table.
+ *
+ * @see SystemQueue
  */
 class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
   /**
@@ -28,20 +32,12 @@ class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
   }
 
   public function claimItem($lease_time = 30) {
-    // Claim an item by updating its expire fields. If claim is not successful
-    // another thread may have claimed the item in the meantime. Therefore loop
-    // until an item is successfully claimed or we are reasonably sure there
-    // are no unclaimed items left.
+    // Claim an item by updating its expire fields.
     while (TRUE) {
       $item = db_query_range('SELECT entity_type, entity_id, service, metric FROM {service_links_analytics} WHERE expire = 0 AND (updated = 0 OR updated < :threshold) ORDER BY updated ASC', 0, 1, array(':threshold' => time() - $this->expire))->fetchObject();
       $item->data = clone $item;
       if ($item->data) {
-        // Try to update the item. Only one thread can succeed in UPDATEing the
-        // same row. We cannot rely on REQUEST_TIME because items might be
-        // claimed by a single consumer which runs longer than 1 second. If we
-        // continue to use REQUEST_TIME instead of the current time(), we steal
-        // time from the lease, and will tend to reset items before the lease
-        // should really expire.
+        // Try to update the item.
         $update = db_update('service_links_analytics')
           ->fields(array(
             'expire' => time() + $lease_time,
