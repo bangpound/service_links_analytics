@@ -11,8 +11,11 @@ class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
    */
   protected $name;
 
+  protected $expire;
+
   public function __construct($name) {
     $this->name = $name;
+    $this->expire = variable_get('service_links_analytics_expire', 3600);
   }
 
   public function createItem($data) {
@@ -21,7 +24,7 @@ class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
   }
 
   public function numberOfItems() {
-    return db_query('SELECT COUNT(*) FROM {service_links_analytics} WHERE updated = 0 OR updated < :threshold', array(':threshold' => REQUEST_TIME - 3600))->fetchField();
+    return db_query('SELECT COUNT(*) FROM {service_links_analytics} WHERE updated = 0 OR updated < :threshold', array(':threshold' => time() - $this->expire))->fetchField();
   }
 
   public function claimItem($lease_time = 30) {
@@ -31,7 +34,7 @@ class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
     // are no unclaimed items left.
     while (TRUE) {
       $item = new stdClass();
-      $item->data = db_query_range('SELECT entity_type, entity_id, service, metric FROM {service_links_analytics} WHERE expire = 0 AND (updated = 0 OR updated < :threshold) ORDER BY updated ASC', 0, 1, array(':threshold' => REQUEST_TIME - 3600))->fetchObject();
+      $item->data = db_query_range('SELECT entity_type, entity_id, service, metric FROM {service_links_analytics} WHERE expire = 0 AND (updated = 0 OR updated < :threshold) ORDER BY updated ASC', 0, 1, array(':threshold' => time() - $this->expire))->fetchObject();
       if ($item->data) {
         // Try to update the item. Only one thread can succeed in UPDATEing the
         // same row. We cannot rely on REQUEST_TIME because items might be
