@@ -67,6 +67,7 @@ function service_links_analytics_data_default() {
     'name' => 'service_links_analytics',
     'primary key' => array('entity_type', 'entity_id', 'service', 'metric'),
     'indexes' => array(
+      'value' => array('value'),
       'updated' => array('updated'),
       'expire' => array('expire'),
     ),
