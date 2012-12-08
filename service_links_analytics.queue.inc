@@ -31,8 +31,8 @@ class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
     // are no unclaimed items left.
     while (TRUE) {
       $item = new stdClass();
-      $item->data = db_query_range('SELECT entity_type, entity_id FROM {service_links_analytics} q WHERE expire = 0 AND (updated = 0 OR updated < :threshold) ORDER BY updated ASC', 0, 1, array(':threshold' => REQUEST_TIME - 3600))->fetchObject();
-      if ($item) {
+      $item->data = db_query_range('SELECT entity_type, entity_id, service, metric FROM {service_links_analytics} WHERE expire = 0 AND (updated = 0 OR updated < :threshold) ORDER BY updated ASC', 0, 1, array(':threshold' => REQUEST_TIME - 3600))->fetchObject();
+      if ($item->data) {
         // Try to update the item. Only one thread can succeed in UPDATEing the
         // same row. We cannot rely on REQUEST_TIME because items might be
         // claimed by a single consumer which runs longer than 1 second. If we
@@ -45,6 +45,8 @@ class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
           ))
           ->condition('entity_type', $item->data->entity_type)
           ->condition('entity_id', $item->data->entity_id)
+          ->condition('service', $item->data->service)
+          ->condition('metric', $item->data->metric)
           ->condition('expire', 0);
         // If there are affected rows, this update succeeded.
         if ($update->execute()) {
@@ -65,6 +67,8 @@ class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
       ))
       ->condition('entity_type', $item->data->entity_type)
       ->condition('entity_id', $item->data->entity_id)
+      ->condition('service', $item->data->service)
+      ->condition('metric', $item->data->metric)
       ->execute();
   }
 
@@ -76,6 +80,8 @@ class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
       ))
       ->condition('entity_type', $item->data->entity_type)
       ->condition('entity_id', $item->data->entity_id)
+      ->condition('service', $item->data->service)
+      ->condition('metric', $item->data->metric)
       ->execute();
   }
 

@@ -3,23 +3,27 @@
 /**
  * Returns analytics for a URL.
  */
-function service_links_analytics_data($entity_type, $entity) {
+function service_links_analytics_data($entity_type, $entity, $service_id, $metric) {
+  $request_cache = &drupal_static(__FUNCTION__, array());
+
   $uri = entity_uri($entity_type, $entity);
   //$uri['options']['absolute'] = TRUE;
   $url = 'http://electronicintifada.net'. url($uri['path'], $uri['options']);
   $row = new stdClass();
-  $service_ids = array('google_plus_one', 'twitter', 'facebook', 'reddit', 'linkedin', 'delicious', 'stumbleupon', 'pinterest');
-  $services = service_links_get_links($service_ids);
+  $services = service_links_get_links(array($service_id));
   foreach ($services as $service_id => $service) {
-    if (!isset($service['analytics_callback'])) {
+    if (!isset($service['analytics']['callback'])) {
       $tag = array(
         'encoded-url' => '<encoded-url>',
       );
       $subst = array(
         'encoded-url' => $url,
       );
-      $analytics_url = str_replace($tag, $subst, $service['analytics']);
-      $result = drupal_http_request($analytics_url);
+      $analytics_url = str_replace($tag, $subst, $service['analytics']['url']);
+      if (!$request_cache[$analytics_url]) {
+        $request_cache[$analytics_url] = drupal_http_request($analytics_url);
+      }
+      $result = $request_cache[$analytics_url];
       if ($result->code == 200) {
         $data = drupal_json_decode($result->data);
         if (!$data) {
@@ -27,52 +31,54 @@ function service_links_analytics_data($entity_type, $entity) {
         }
         switch ($service_id) {
           case 'facebook':
-            $row->fb_share_count = $data[0]['share_count'];
-            $row->fb_like_count = $data[0]['like_count'];
-            $row->fb_comment_count = $data[0]['comment_count'];
-            $row->fb_total_count = $data[0]['total_count'];
+            if ($metric != 'count') {
+              $row->value = $data[0][$metric .'_count'];
+            }
+            else {
+              $row->value = $data[0]['total_count'];
+            }
             break;
 
           case 'twitter':
-            $row->twitter_count = $data['count'];
+            $row->value = $data['count'];
             break;
 
           case 'reddit':
-            $row->reddit_count = 0;
+            $row->value = 0;
             foreach ($data['data']['children'] as $child) {
-              $row->reddit_count += $child['data']['score'];
+              $row->value += $child['data']['score'];
             }
             break;
 
           case 'linkedin':
-            $row->linkedin_count = $data['count'];
+            $row->value = $data['count'];
             break;
 
           case 'delicious':
             if (!empty($data)) {
-              $row->delicious_count = $data[0]['total_posts'];
+              $row->value = $data[0]['total_posts'];
             }
             break;
 
           case 'stumbleupon':
             if ($data['result']['in_index']) {
-              $row->stumbleupon_count = $data['result']['views'];
+              $row->value = $data['result']['views'];
             }
             break;
 
           case 'pinterest':
             if (isset($data['count'])) {
-              $row->pinterest_count = $data['count'];
+              $row->value = $data['count'];
             }
             break;
         }
       }
     }
     else {
-      $result = $service['analytics_callback']($url);
+      $result = $service['analytics']['callback']($url);
       switch ($service_id) {
         case 'google_plus_one':
-          $row->google_plus_one_count = $result;
+          $row->value = $result;
           break;
       }
     }
@@ -84,14 +90,20 @@ function service_links_analytics_data($entity_type, $entity) {
  * Loads statistics for a URL.
  */
 function service_links_analytics_load($entity_type, $entity_id) {
-  $result = db_select('service_links_analytics', 'a')
-    ->fields('a')
+  $results = db_select('service_links_analytics', 'a')
+    ->fields('a', array('service', 'metric', 'value'))
     ->condition('entity_type', $entity_type)
     ->condition('entity_id', $entity_id)
     ->execute()
-    ->fetchObject();
+    ->fetchAll();
 
-  return $result;
+  $analytics = array();
+
+  foreach ($results as $result) {
+    $analytics[$result->service][$result->metric] = $result->value;
+  }
+
+  return $analytics;
 }
 
 /**
@@ -101,10 +113,14 @@ function service_links_analytics_save($row) {
   $fields = (array) $row;
   unset($fields['entity_type']);
   unset($fields['entity_id']);
+  unset($fields['service']);
+  unset($fields['metric']);
   return db_merge('service_links_analytics')
     ->key(array(
     'entity_type' => $row->entity_type,
     'entity_id' => $row->entity_id,
+    'service' => $row->service,
+    'metric' => $row->metric,
   ))
   ->fields($fields)
   ->execute();
@@ -117,11 +133,20 @@ function service_links_analytics_entity_load($entities, $type) {
       $result = service_links_analytics_load($type, $id);
       if (!$result) {
         $queue = DrupalQueue::get('service_links_analytics');
-        $data = array(
-          'entity_type' => $type,
-          'entity_id' => $id,
-        );
-        $queue->createItem($data);
+        $services = service_links_get_links();
+        foreach ($services as $service_id => $service) {
+          if (isset($service['analytics'])) {
+            foreach ($service['analytics']['metrics'] as $metric) {
+              $data = array(
+                'entity_type' => $type,
+                'entity_id' => $id,
+                'service' => $service_id,
+                'metric' => $metric,
+              );
+              $queue->createItem($data);
+            }
+          }
+        }
       }
     }
   }
@@ -179,10 +204,12 @@ function service_links_analytics_cron_queue_info() {
 function service_links_analytics_refresh($data) {
   $entities = entity_load($data->entity_type, array($data->entity_id), array(), FALSE);
   foreach ($entities as $entity) {
-    $result = service_links_analytics_data($data->entity_type, $entity);
+    $result = service_links_analytics_data($data->entity_type, $entity, $data->service, $data->metric);
     if ($result) {
       $result->entity_type = $data->entity_type;
       $result->entity_id = $data->entity_id;
+      $result->service = $data->service;
+      $result->metric = $data->metric;
       $result->updated = time();
       service_links_analytics_save($result);
     }

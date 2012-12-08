@@ -14,8 +14,22 @@ function service_links_analytics_service_links_alter(&$links) {
   );
 
   foreach ($services as $name => $url) {
-    $links[$name]['analytics'] = $url;
+    $links[$name]['analytics'] = array(
+      'url' => $url,
+      'metrics' => array(
+        'count',
+      ),
+    );
   }
 
-  $links['google_plus_one']['analytics_callback'] = 'service_links_analytics_google_plus_one_count';
+  $links['facebook']['analytics']['metrics'][] = 'like';
+  $links['facebook']['analytics']['metrics'][] = 'share';
+  $links['facebook']['analytics']['metrics'][] = 'comment';
+
+  $links['google_plus_one']['analytics'] = array(
+    'callback' => 'service_links_analytics_google_plus_one_count',
+    'metrics' => array(
+      'count',
+    ),
+  );
 }
