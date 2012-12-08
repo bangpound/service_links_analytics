@@ -1,0 +1,5 @@
+<?php
+
+function service_links_analytics_enable() {
+  variable_set('queue_class_service_links_analytics', 'ServiceLinksAnalyticsQueue');
+}

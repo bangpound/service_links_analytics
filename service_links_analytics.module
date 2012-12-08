@@ -101,7 +101,7 @@ function service_links_analytics_save($row) {
   $fields = (array) $row;
   unset($fields['entity_type']);
   unset($fields['entity_id']);
-  db_merge('service_links_analytics')
+  return db_merge('service_links_analytics')
     ->key(array(
     'entity_type' => $row->entity_type,
     'entity_id' => $row->entity_id,
@@ -115,14 +115,13 @@ function service_links_analytics_entity_load($entities, $type) {
     foreach ($entities as $entity) {
       list($id) = entity_extract_ids($type, $entity);
       $result = service_links_analytics_load($type, $id);
-      if (!$result || $result->updated < REQUEST_TIME - 3600) {
-        $result = service_links_analytics_data($type, $entity);
-        if ($result) {
-          $result->entity_type = $type;
-          $result->entity_id = $id;
-          $result->updated = REQUEST_TIME;
-          service_links_analytics_save($result);
-        }
+      if (!$result) {
+        $queue = DrupalQueue::get('service_links_analytics');
+        $data = array(
+          'entity_type' => $type,
+          'entity_id' => $id,
+        );
+        $queue->createItem($data);
       }
     }
   }
@@ -164,5 +163,28 @@ function service_links_analytics_google_plus_one_count($url) {
 function service_links_analytics_ctools_plugin_api($module, $api) {
   if ($module == 'data' && $api == 'data_default') {
     return array('version' => 1);
+  }
+}
+
+/**
+ * Implements hook_cron_queue_info().
+ */
+function service_links_analytics_cron_queue_info() {
+  $queues['service_links_analytics'] = array(
+    'worker callback' => 'service_links_analytics_refresh',
+  );
+  return $queues;
+}
+
+function service_links_analytics_refresh($data) {
+  $entities = entity_load($data->entity_type, array($data->entity_id), array(), FALSE);
+  foreach ($entities as $entity) {
+    $result = service_links_analytics_data($data->entity_type, $entity);
+    if ($result) {
+      $result->entity_type = $data->entity_type;
+      $result->entity_id = $data->entity_id;
+      $result->updated = time();
+      service_links_analytics_save($result);
+    }
   }
 }

@@ -111,14 +111,24 @@ function service_links_analytics_data_default() {
       ),
       'updated' => array(
         'type' => 'int',
-        'size' => 'normal',
         'unsigned' => TRUE,
         'not null' => FALSE,
-        'description' => '',
+        'default' => 0,
+        'description' => 'Timestamp when the item was updated.',
+      ),
+      'expire' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Timestamp when the claim lease expires on the item.',
       ),
     ),
     'name' => 'service_links_analytics',
     'primary key' => array('entity_type', 'entity_id'),
+    'indexes' => array(
+      'updated' => array('updated'),
+      'expire' => array('expire'),
+    ),
   );
   $data_table->meta = array(
     'fields' => array(
