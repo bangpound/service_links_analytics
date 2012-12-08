@@ -7,8 +7,8 @@ function service_links_analytics_data($entity_type, $entity, $service_id, $metri
   $request_cache = &drupal_static(__FUNCTION__, array());
 
   $uri = entity_uri($entity_type, $entity);
-  //$uri['options']['absolute'] = TRUE;
-  $url = 'http://electronicintifada.net'. url($uri['path'], $uri['options']);
+  $uri['options']['absolute'] = TRUE;
+  $url = url($uri['path'], $uri['options']);
   $row = new stdClass();
   $services = service_links_get_links(array($service_id));
   foreach ($services as $service_id => $service) {
