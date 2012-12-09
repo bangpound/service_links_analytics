@@ -58,8 +58,12 @@ function service_links_analytics_save($row) {
   }
 }
 
+/**
+ * Implements hook_entity_load().
+ */
 function service_links_analytics_entity_load($entities, $type) {
-  if ($type == 'node') {
+  $types = variable_get('service_links_analytics_entity_types', array('node'));
+  if (in_array($type, $types)) {
 
     ctools_include('plugins');
     $plugins = ctools_get_plugins('service_links_analytics', 'services');
