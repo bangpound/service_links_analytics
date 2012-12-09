@@ -1,5 +1,70 @@
 <?php
 
+/**
+ * Implements hook_schema().
+ */
+function service_links_analytics_schema() {
+  $schema = array();
+  $schema['service_links_analytics'] = array(
+    'description' => 'TODO: please describe this table!',
+    'fields' => array(
+      'entity_type' => array(
+        'description' => 'The entity type this data is attached to',
+        'type' => 'varchar',
+        'length' => '128',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'entity_id' => array(
+        'description' => 'The entity id this data is attached to',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'service' => array(
+        'description' => 'TODO: please describe this field!',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'metric' => array(
+        'description' => 'TODO: please describe this field!',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => 'count',
+      ),
+      'value' => array(
+        'description' => 'TODO: please describe this field!',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
+      'refresh' => array(
+        'description' => 'Timestamp when the item should be refreshed (max age).',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'default' => 0,
+      ),
+      'expire' => array(
+        'description' => 'Timestamp when the claim lease expires on the item.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('entity_type', 'entity_id', 'service', 'metric'),
+    'indexes' => array(
+      'expire' => array('expire'),
+      'refresh' => array('refresh'),
+      'value' => array('value'),
+    ),
+  );
+  return $schema;
+}
+
 function service_links_analytics_enable() {
   variable_set('queue_class_service_links_analytics', 'ServiceLinksAnalyticsQueue');
 }

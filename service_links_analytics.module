@@ -90,12 +90,12 @@ function service_links_analytics_entity_load($entities, $type) {
 }
 
 /**
- * Implements hook_ctools_plugin_api().
+ * Implements hook_views_api().
  */
-function service_links_analytics_ctools_plugin_api($module, $api) {
-  if ($module == 'data' && $api == 'data_default') {
-    return array('version' => 1);
-  }
+function service_links_analytics_views_api() {
+  return array(
+    'api' => 3,
+  );
 }
 
 /**
