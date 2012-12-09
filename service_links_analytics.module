@@ -95,6 +95,22 @@ function service_links_analytics_ctools_plugin_api($module, $api) {
 }
 
 /**
+ * Implement hook_cron().
+ */
+function service_links_analytics_cron() {
+
+  // Reset expired items in the default queue implementation table. If that's
+  // not used, this will simply be a no-op.
+  db_update('service_links_analytics')
+    ->fields(array(
+      'expire' => 0,
+    ))
+    ->condition('expire', 0, '<>')
+    ->condition('expire', REQUEST_TIME, '<')
+    ->execute();
+}
+
+/**
  * Implements hook_cron_queue_info().
  */
 function service_links_analytics_cron_queue_info() {
