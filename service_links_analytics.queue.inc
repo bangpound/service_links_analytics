@@ -15,28 +15,36 @@ class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
    */
   protected $name;
 
-  protected $expire;
-
   public function __construct($name) {
     $this->name = $name;
-    $this->expire = variable_get('service_links_analytics_expire', 3600);
   }
 
   public function createItem($data) {
-    $row = (object) $data;
-    return service_links_analytics_save($row);
+    return drupal_write_record('service_links_analytics', $data);
   }
 
   public function numberOfItems() {
-    return db_query('SELECT COUNT(*) FROM {service_links_analytics} WHERE updated = 0 OR updated < :threshold', array(':threshold' => time() - $this->expire))->fetchField();
+    $query = db_select('service_links_analytics')
+      ->condition('refresh', time(), '<');
+
+    $query->addExpression('COUNT(*)');
+    return $query->execute()->fetchField();
   }
 
   public function claimItem($lease_time = 30) {
     // Claim an item by updating its expire fields.
     while (TRUE) {
-      $item = db_query_range('SELECT entity_type, entity_id, service, metric FROM {service_links_analytics} WHERE expire = 0 AND (updated = 0 OR updated < :threshold) ORDER BY updated ASC', 0, 1, array(':threshold' => time() - $this->expire))->fetchObject();
-      $item->data = clone $item;
-      if ($item->data) {
+      $query = db_select('service_links_analytics', 'a')
+        ->fields('a', array('entity_type', 'entity_id', 'service'))
+        ->condition('expire', 0)
+        ->condition('refresh', time(), '<')
+        ->orderBy('refresh', 'ASC')
+        ->range(0, 1);
+
+      $item = $query->execute()->fetchObject();
+      if ($item) {
+        $item->data = clone $item;
+
         // Try to update the item.
         $update = db_update('service_links_analytics')
           ->fields(array(
@@ -45,8 +53,8 @@ class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
           ->condition('entity_type', $item->data->entity_type)
           ->condition('entity_id', $item->data->entity_id)
           ->condition('service', $item->data->service)
-          ->condition('metric', $item->data->metric)
           ->condition('expire', 0);
+
         // If there are affected rows, this update succeeded.
         if ($update->execute()) {
           return $item;
@@ -67,21 +75,11 @@ class ServiceLinksAnalyticsQueue implements DrupalReliableQueueInterface {
       ->condition('entity_type', $item->data->entity_type)
       ->condition('entity_id', $item->data->entity_id)
       ->condition('service', $item->data->service)
-      ->condition('metric', $item->data->metric)
       ->execute();
   }
 
   public function deleteItem($item) {
-    return db_update('service_links_analytics')
-      ->fields(array(
-        'updated' => time(),
-        'expire' => 0,
-      ))
-      ->condition('entity_type', $item->data->entity_type)
-      ->condition('entity_id', $item->data->entity_id)
-      ->condition('service', $item->data->service)
-      ->condition('metric', $item->data->metric)
-      ->execute();
+    return $this->releaseItem($item);
   }
 
   public function createQueue() {

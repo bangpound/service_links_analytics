@@ -32,19 +32,6 @@ function service_links_analytics_data_default() {
         'not null' => TRUE,
         'description' => 'The entity id this data is attached to',
       ),
-      'updated' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => FALSE,
-        'default' => 0,
-        'description' => 'Timestamp when the item was updated.',
-      ),
-      'expire' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-        'description' => 'Timestamp when the claim lease expires on the item.',
-      ),
       'service' => array(
         'type' => 'varchar',
         'length' => 255,
@@ -63,12 +50,25 @@ function service_links_analytics_data_default() {
         'not null' => FALSE,
         'default' => NULL,
       ),
+      'refresh' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'default' => 0,
+        'description' => 'Timestamp when the item should be refreshed (max age).',
+      ),
+      'expire' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Timestamp when the claim lease expires on the item.',
+      ),
     ),
     'name' => 'service_links_analytics',
     'primary key' => array('entity_type', 'entity_id', 'service', 'metric'),
     'indexes' => array(
       'value' => array('value'),
-      'updated' => array('updated'),
+      'refresh' => array('refresh'),
       'expire' => array('expire'),
     ),
   );
@@ -88,8 +88,8 @@ function service_links_analytics_data_default() {
         'views_argument_handler' => 'views_handler_argument_numeric',
         'views_sort_handler' => 'views_handler_sort',
       ),
-      'updated' => array(
-        'label' => 'Updated',
+      'refresh' => array(
+        'label' => 'Refresh',
         'views_field_handler' => 'views_handler_field_date',
         'views_filter_handler' => 'views_handler_filter_date',
         'views_argument_handler' => 'views_handler_argument_date',
