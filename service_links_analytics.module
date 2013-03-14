@@ -175,3 +175,8 @@ function service_links_get_handler($plugin) {
   }
   return !empty($cache[$plugin['name']]) ? $cache[$plugin['name']] : FALSE;
 }
+
+function service_links_analytics_entity_delete($entity, $type) {
+  list($id) = entity_extract_ids($type, $entity);
+  db_delete('service_links_analytics')->condition('entity_type', $type)->condition('entity_id', $id)->execute();
+}
