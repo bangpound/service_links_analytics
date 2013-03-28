@@ -31,7 +31,7 @@ class ServiceLinksAnalyticsService {
   }
 
   function result() {
-    if ($this->data) {
+    if (isset($this->data) && isset($this->data['count'])) {
       return $this->data['count'];
     }
   }

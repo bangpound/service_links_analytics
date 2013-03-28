@@ -128,6 +128,7 @@ function service_links_analytics_refresh($data) {
   $entities = entity_load($data->entity_type, array($data->entity_id), array(), FALSE);
   $entity = reset($entities);
 
+  $result = new stdClass;
   $result->entity_type = $data->entity_type;
   $result->entity_id = $data->entity_id;
   $result->service = $data->service;
@@ -135,6 +136,9 @@ function service_links_analytics_refresh($data) {
   $value = service_links_analytics_data($data->entity_type, $entity, $data->service);
   if ($value) {
     $result->value = $value;
+  }
+  else {
+    $result->value = 0;
   }
   service_links_analytics_save($result);
 }
